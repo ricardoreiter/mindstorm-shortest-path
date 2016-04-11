@@ -1,6 +1,7 @@
 import java.util.ArrayList;
-import java.util.List;
 
+import lejos.geom.Point;
+import lejos.nxt.LCD;
 import lejos.nxt.Motor;
 import lejos.nxt.SensorPort;
 import lejos.nxt.UltrasonicSensor;
@@ -9,27 +10,30 @@ import lejos.robotics.subsumption.Behavior;
 
 public class Main {
 
-	private static final int MAX_DISTANCE_TO_WALL = 25;
-	private static final int TURN_ROTATE_VALUE = 280;
+	public static final int MAX_DISTANCE_TO_WALL = 25;
+	public static final int TURN_ROTATE_VALUE = 280;
 	
-	private static int x = 0;
-	private static int y = 0;
+	private static Point pos = new Point(0, 0);
 	
 	// 0 baixo 1 cima 2 direita 3 esquerda
-	private static int actualDirection = -1;
-	private static int newDirection = -1;
+	private static Direcao actualDirection = null;
+	private static Direcao newDirection = null;
+	private static ArrayList<Direcao> directionQueue = new ArrayList<>();
+	private static boolean stepBack = false;
 	
 	private static Posicao[][] matriz = {{null, null, null, null},
 										{null, null, null, null},
 										{null, null, null, null},
 										{null, null, null, null}};
 	
-	private static class Posicao {
+	public static class Posicao {
 		
-		boolean cima;
-		boolean baixo;
-		boolean direita;
-		boolean esquerda;
+		public static final int BAIXO = 0;
+		public static final int CIMA = 1;
+		public static final int DIREITA = 2;
+		public static final int ESQUERDA = 3;
+		
+		boolean freePaths[] = new boolean[4];
 		
 	}
 	
@@ -51,122 +55,42 @@ public class Main {
 
 		@Override
 		public void action() {
-			if (actualDirection > -1) {
+			if (actualDirection != null) {
 				Motor.B.rotate(800, true);
 				Motor.C.rotate(800);
 				
-				incrementPosWithDirection();
+				pos = actualDirection.getUpdatedPoint(pos);
 			} else {
-				actualDirection = 0;
+				actualDirection = new Baixo(ultrasonicSensor);
 			}
+			printMapState();
 			
-			if (matriz[y][x] != null) {
+			Posicao posicaoAtual = matriz[(int) pos.y][(int) pos.x];
+			if (posicaoAtual != null) {
 				System.out.println("Está em um nodo já visitado!");
+			} else {
+				Posicao newPos = new Posicao();
+				matriz[(int) pos.y][(int) pos.x] = newPos;
+				posicaoAtual = newPos;
 			}
-			Posicao newPos = new Posicao();
-			matriz[y][x] = newPos;
-			int reverseDirection = -1;
 			
-			boolean freePaths[] = new boolean[4];
-			switch (actualDirection) {
-				case 0:
-					reverseDirection = 1;
-					newPos.cima = true;
-					newPos.baixo = isPathFree(0);
-					newPos.direita = isPathFree(90);
-					newPos.esquerda = isPathFree(-180);
-					if (newPos.baixo) {
-						freePaths[0] = true;
-					}
-					if (newPos.direita) {
-						freePaths[2] = true;
-					}
-					if (newPos.esquerda) {
-						freePaths[3] = true;
-					}
-					break;
-				case 1:
-					reverseDirection = 0;
-					newPos.baixo = true;
-					newPos.cima = isPathFree(0);
-					newPos.esquerda = isPathFree(90);
-					newPos.direita = isPathFree(-180);
-					if (newPos.cima) {
-						freePaths[1] = true;
-					}
-					if (newPos.direita) {
-						freePaths[2] = true;
-					}
-					if (newPos.esquerda) {
-						freePaths[3] = true;
-					}
-					break;
-				case 2:
-					reverseDirection = 3;
-					newPos.esquerda = true;
-					newPos.direita = isPathFree(0);
-					newPos.cima = isPathFree(90);
-					newPos.baixo = isPathFree(-180);
-					if (newPos.baixo) {
-						freePaths[0] = true;
-					}
-					if (newPos.cima) {
-						freePaths[1] = true;
-					}
-					if (newPos.direita) {
-						freePaths[2] = true;
-					}
-					break;
-				case 3:
-					reverseDirection = 2;
-					newPos.direita = true;
-					newPos.esquerda = isPathFree(0);
-					newPos.baixo = isPathFree(90);
-					newPos.cima = isPathFree(-180);
-					if (newPos.baixo) {
-						freePaths[0] = true;
-					}
-					if (newPos.cima) {
-						freePaths[1] = true;
-					}
-					if (newPos.esquerda) {
-						freePaths[3] = true;
-					}
-					break;
-			}
-			isPathFree(90);
-			newDirection = -1;
-			for (int i = 0; i < 4; i++) {
-				if (freePaths[i]) {
-					System.out.println("New Direction");
-					newDirection = i;
+			ArrayList<Direcao> directions = actualDirection.checkBounds(posicaoAtual, pos);
+			Direcao direction = null;
+			
+			for (int i = 0; i < directions.size(); i++) {
+				Point directionPoint = directions.get(i).getUpdatedPoint(pos);
+				if (matriz[(int) directionPoint.y][(int) directionPoint.x] == null) {
+					direction = directions.get(i);
 					break;
 				}
 			}
-			if (newDirection == -1) {
-				newDirection = reverseDirection;
-			}
-		}
-		
-		private boolean isPathFree(int angle) {
-			Motor.A.rotate(-angle);
-			return ultrasonicSensor.getDistance() > MAX_DISTANCE_TO_WALL;
-		}
-		
-		private void incrementPosWithDirection() {
-			switch (actualDirection) {
-				case 0:
-					y++;
-					break;
-				case 1:
-					y--;
-					break;
-				case 2:
-					x++;
-					break;
-				case 3:
-					x--;
-					break;
+			
+			if (direction != null) {
+				newDirection = directions.get(0);
+				directionQueue.add(newDirection);
+			} else {
+				System.out.println("Não tem posições posíveis, step-back");
+				stepBack = true;
 			}
 		}
 		
@@ -177,98 +101,49 @@ public class Main {
 		}
 		
 	}
+
+	private static class StepBack implements Behavior {
+
+		@Override
+		public boolean takeControl() {
+			return stepBack;
+		}
+
+		@Override
+		public void action() {
+			Direcao lastDirection = directionQueue.get(directionQueue.size() - 1);
+			directionQueue.remove(directionQueue.size() - 1);
+			
+			newDirection = lastDirection.reverse();
+			stepBack = false;
+		}
+
+		@Override
+		public void suppress() {
+			
+		}
+		
+	}
+
 	
 	private static class Girar implements Behavior {
 
 		@Override
 		public boolean takeControl() {
-			return newDirection > -1;
+			return newDirection != null;
 		}
 
 		@Override
 		public void action() {
-			int motorBRotate = 0;
-			int motorCRotate = 0;
-			int rotateTimes = 1;
+			GirarRoboInfo girarRoboInfo = newDirection.getTurnInfo(actualDirection);
 			
-			System.out.println("New " + newDirection + " actual " + actualDirection);
-			switch (newDirection) {
-				case 0:
-					switch (actualDirection) {
-					case 1:
-						rotateTimes = 2;
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					case 2:
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					case 3:
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					}
-					break;
-				case 1:
-					switch (actualDirection) {
-					case 0:
-						rotateTimes = 2;
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					case 2:
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					case 3:
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					}
-					break;
-				case 2:
-					switch (actualDirection) {
-					case 1:
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					case 0:
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					case 3:
-						rotateTimes = 2;
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					}
-					break;
-				case 3:
-					switch (actualDirection) {
-					case 1:
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					case 0:
-						motorBRotate = TURN_ROTATE_VALUE;
-						motorCRotate = -TURN_ROTATE_VALUE;
-						break;
-					case 2:
-						rotateTimes = 2;
-						motorBRotate = -TURN_ROTATE_VALUE;
-						motorCRotate = TURN_ROTATE_VALUE;
-						break;
-					}
-					break;
+			if (girarRoboInfo != null) {
+				Motor.B.rotate(girarRoboInfo.motorBRotate, true);
+				Motor.C.rotate(girarRoboInfo.motorCRotate);
 			}
 			
-			for (int i = 0; i < rotateTimes; i++) {
-				Motor.B.rotate(motorBRotate, true);
-				Motor.C.rotate(motorCRotate);
-			}
 			actualDirection = newDirection;
-			newDirection = -1;
+			newDirection = null;
 		}
 
 		@Override
@@ -278,10 +153,38 @@ public class Main {
 		
 	}
 	
+	public static void printMapState() {
+		LCD.clear();
+		LCD.drawString(formatMapLine(matriz[0]), 0, 0);
+		LCD.drawString(formatMapLine(matriz[1]), 0, 1);
+		LCD.drawString(formatMapLine(matriz[2]), 0, 2);
+		LCD.drawString(formatMapLine(matriz[3]), 0, 3);
+	}
+	
+	private static String formatMapLine(Posicao[] line) {
+		return getFreePathCount(line[0]) + "|" + getFreePathCount(line[1]) + "|" + getFreePathCount(line[2]) + "|" + getFreePathCount(line[3]);
+	}
+	
+	private static String getFreePathCount(Posicao pos) {
+		if (pos == null) {
+			return "-";
+		}
+		if (pos.equals(Main.pos)) {
+			return "X";
+		}
+		int count = 0;
+		for (int i = 0; i < pos.freePaths.length; i++) {
+			if (pos.freePaths[i]) {
+				count++;
+			}
+		}
+		return String.valueOf(count);
+	}
+	
 	public static void main(String[] args) throws InterruptedException {
 		Thread.sleep(2000);
 		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S3);
-		Behavior[] behaviorList = {new AndarRastrearBloco(ultrasonicSensor), new Girar()};
+		Behavior[] behaviorList = {new AndarRastrearBloco(ultrasonicSensor), new Girar(), new StepBack()};
 		
 		Arbitrator arbitrator = new Arbitrator(behaviorList);
 		arbitrator.start();
