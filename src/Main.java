@@ -1,6 +1,8 @@
+import java.awt.Color;
 import java.util.ArrayList;
 
 import lejos.geom.Point;
+import lejos.nxt.ColorSensor;
 import lejos.nxt.LCD;
 import lejos.nxt.Motor;
 import lejos.nxt.SensorPort;
@@ -125,6 +127,30 @@ public class Main {
 		
 	}
 
+	private static class ProcurarPosFinal implements Behavior {
+
+		private ColorSensor colorSensor;
+		
+		public ProcurarPosFinal(ColorSensor colorSensor) {
+			this.colorSensor = colorSensor;
+		}
+
+		@Override
+		public boolean takeControl() {
+			return colorSensor.getColorID() == 1;
+		}
+
+		@Override
+		public void action() {
+			System.out.println("Achou nó final, caminho mapeado");
+		}
+
+		@Override
+		public void suppress() {
+			
+		}
+		
+	}
 	
 	private static class Girar implements Behavior {
 
@@ -184,7 +210,8 @@ public class Main {
 	public static void main(String[] args) throws InterruptedException {
 		Thread.sleep(2000);
 		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S3);
-		Behavior[] behaviorList = {new AndarRastrearBloco(ultrasonicSensor), new Girar(), new StepBack()};
+		ColorSensor colorSensor = new ColorSensor(SensorPort.S2);
+		Behavior[] behaviorList = {new AndarRastrearBloco(ultrasonicSensor), new Girar(), new StepBack(), new ProcurarPosFinal(colorSensor)};
 		
 		Arbitrator arbitrator = new Arbitrator(behaviorList);
 		arbitrator.start();
