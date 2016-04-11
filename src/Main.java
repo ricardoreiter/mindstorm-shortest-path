@@ -1,4 +1,3 @@
-import java.awt.Color;
 import java.util.ArrayList;
 
 import lejos.geom.Point;
@@ -6,6 +5,7 @@ import lejos.nxt.ColorSensor;
 import lejos.nxt.LCD;
 import lejos.nxt.Motor;
 import lejos.nxt.SensorPort;
+import lejos.nxt.TouchSensor;
 import lejos.nxt.UltrasonicSensor;
 import lejos.robotics.subsumption.Arbitrator;
 import lejos.robotics.subsumption.Behavior;
@@ -88,7 +88,7 @@ public class Main {
 			}
 			
 			if (direction != null) {
-				newDirection = directions.get(0);
+				newDirection = direction;
 				directionQueue.add(newDirection);
 			} else {
 				System.out.println("Não tem posições posíveis, step-back");
@@ -142,7 +142,33 @@ public class Main {
 
 		@Override
 		public void action() {
+			// Vertificar se precisa mapear todo o mapa
 			System.out.println("Achou nó final, caminho mapeado");
+		}
+
+		@Override
+		public void suppress() {
+			
+		}
+		
+	}
+	
+	private static class PararRobo implements Behavior {
+
+		private TouchSensor touchSensor;
+		
+		public PararRobo(TouchSensor touchSensor) {
+			this.touchSensor = touchSensor;
+		}
+
+		@Override
+		public boolean takeControl() {
+			return touchSensor.isPressed();
+		}
+
+		@Override
+		public void action() {
+			System.exit(0);
 		}
 
 		@Override
@@ -211,7 +237,14 @@ public class Main {
 		Thread.sleep(2000);
 		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S3);
 		ColorSensor colorSensor = new ColorSensor(SensorPort.S2);
-		Behavior[] behaviorList = {new AndarRastrearBloco(ultrasonicSensor), new Girar(), new StepBack(), new ProcurarPosFinal(colorSensor)};
+		TouchSensor touchSensor = new TouchSensor(SensorPort.S1);
+		Behavior[] behaviorList = { //
+									new AndarRastrearBloco(ultrasonicSensor), // 
+									new Girar(), //
+									new StepBack(), // 
+									new ProcurarPosFinal(colorSensor), // 
+									new PararRobo(touchSensor) //
+								  };
 		
 		Arbitrator arbitrator = new Arbitrator(behaviorList);
 		arbitrator.start();
