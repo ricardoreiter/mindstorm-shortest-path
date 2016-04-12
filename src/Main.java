@@ -13,7 +13,7 @@ import lejos.robotics.subsumption.Behavior;
 public class Main {
 
 	public static final int MAX_DISTANCE_TO_WALL = 25;
-	public static final int TURN_ROTATE_VALUE = 280;
+	public static final int TURN_ROTATE_VALUE = 285;
 	
 	private static Point pos = new Point(0, 0);
 	
@@ -21,55 +21,69 @@ public class Main {
 	private static Direcao actualDirection = null;
 	private static Direcao newDirection = null;
 	private static ArrayList<Direcao> directionQueue = new ArrayList<>();
-	private static boolean stepBack = false;
 	
+	private static Point greenPos = null;
+	private static boolean mapped = false;
 	private static Posicao[][] matriz = {{null, null, null, null},
 										{null, null, null, null},
 										{null, null, null, null},
 										{null, null, null, null}};
 	
-	public static class Posicao {
-		
-		public static final int BAIXO = 0;
-		public static final int CIMA = 1;
-		public static final int DIREITA = 2;
-		public static final int ESQUERDA = 3;
-		
-		boolean freePaths[] = new boolean[4];
-		
-	}
+	private static ArrayList<Direcao> pathToGreen = new ArrayList<>();
 	
 	private static class AndarRastrearBloco implements Behavior {
 
 		UltrasonicSensor ultrasonicSensor;
+		ColorSensor colorSensor;
+		TouchSensor touchSensor;
 		
-		public AndarRastrearBloco(UltrasonicSensor ultrasonicSensor) {
+		public AndarRastrearBloco(UltrasonicSensor ultrasonicSensor, ColorSensor colorSensor, TouchSensor touchSensor) {
 			this.ultrasonicSensor = ultrasonicSensor;
+			this.colorSensor = colorSensor;
+			this.touchSensor = touchSensor;
 			Motor.A.setSpeed(400);
-			Motor.B.setSpeed(400);
-			Motor.C.setSpeed(400);
 		}
 		
 		@Override
 		public boolean takeControl() {
-			return true;
+			return !mapped;
 		}
 
 		@Override
 		public void action() {
+			Motor.B.setSpeed(400);
+			Motor.C.setSpeed(400);
 			if (actualDirection != null) {
-				Motor.B.rotate(800, true);
-				Motor.C.rotate(800);
+				Motor.B.rotate(820, true);
+				Motor.C.rotate(820);
 				
 				pos = actualDirection.getUpdatedPoint(pos);
 			} else {
 				actualDirection = new Baixo(ultrasonicSensor);
 			}
+			if (greenPos == null && colorSensor.getColorID() == 7) {
+				greenPos = pos;
+			}
 			printMapState();
+			
+			if (!hasNodesToSearch()) {
+				LCD.drawString("Achou final!", 0, 0);
+				while (!touchSensor.isPressed()) {
+					
+				}
+				LCD.drawString("Faça o caminho willie!", 0, 0);
+				mapped = true;
+				return;
+			}
+			
+			if (pos.y >= matriz.length || pos.x > matriz[(int) pos.y].length) {
+				System.out.println("ArrayIndex");
+				stepBack();
+				return;
+			} 
 			
 			Posicao posicaoAtual = matriz[(int) pos.y][(int) pos.x];
 			if (posicaoAtual != null) {
-				System.out.println("Está em um nodo já visitado!");
 			} else {
 				Posicao newPos = new Posicao();
 				matriz[(int) pos.y][(int) pos.x] = newPos;
@@ -88,96 +102,37 @@ public class Main {
 			}
 			
 			if (direction != null) {
+				directionQueue.add(direction);
 				newDirection = direction;
-				directionQueue.add(newDirection);
 			} else {
 				System.out.println("Não tem posições posíveis, step-back");
-				stepBack = true;
+				stepBack();
 			}
 		}
 		
 		@Override
 		public void suppress() {
-			Motor.B.stop(true);
-			Motor.C.stop();
-		}
-		
-	}
-
-	private static class StepBack implements Behavior {
-
-		@Override
-		public boolean takeControl() {
-			return stepBack;
-		}
-
-		@Override
-		public void action() {
-			Direcao lastDirection = directionQueue.get(directionQueue.size() - 1);
-			directionQueue.remove(directionQueue.size() - 1);
-			
-			newDirection = lastDirection.reverse();
-			stepBack = false;
-		}
-
-		@Override
-		public void suppress() {
-			
-		}
-		
-	}
-
-	private static class ProcurarPosFinal implements Behavior {
-
-		private ColorSensor colorSensor;
-		
-		public ProcurarPosFinal(ColorSensor colorSensor) {
-			this.colorSensor = colorSensor;
-		}
-
-		@Override
-		public boolean takeControl() {
-			return colorSensor.getColorID() == 1;
-		}
-
-		@Override
-		public void action() {
-			// Vertificar se precisa mapear todo o mapa
-			System.out.println("Achou nó final, caminho mapeado");
-		}
-
-		@Override
-		public void suppress() {
-			
 		}
 		
 	}
 	
-	private static class PararRobo implements Behavior {
-
-		private TouchSensor touchSensor;
-		
-		public PararRobo(TouchSensor touchSensor) {
-			this.touchSensor = touchSensor;
+	private static boolean hasNodesToSearch() {
+		for (int i = 0; i < matriz.length; i++) {
+			for (int j = 0; j < matriz[i].length; j++) {
+				if (matriz[i][j] == null) 
+					return true;
+			}	
 		}
-
-		@Override
-		public boolean takeControl() {
-			return touchSensor.isPressed();
-		}
-
-		@Override
-		public void action() {
-			System.exit(0);
-		}
-
-		@Override
-		public void suppress() {
-			
-		}
-		
+		return false;
 	}
 	
+	private static void stepBack() {
+		Direcao lastDirection = directionQueue.get(directionQueue.size() - 1);
+		directionQueue.remove(directionQueue.size() - 1);
+		
+		newDirection = lastDirection.reverse();
+	}
+
 	private static class Girar implements Behavior {
 
 		@Override
@@ -187,11 +142,13 @@ public class Main {
 
 		@Override
 		public void action() {
+			Motor.B.setSpeed(200);
+			Motor.C.setSpeed(200);
 			GirarRoboInfo girarRoboInfo = newDirection.getTurnInfo(actualDirection);
 			
 			if (girarRoboInfo != null) {
-				Motor.B.rotate(girarRoboInfo.motorBRotate, true);
-				Motor.C.rotate(girarRoboInfo.motorCRotate);
+				Motor.C.rotate(girarRoboInfo.motorCRotate, true);
+				Motor.B.rotate(girarRoboInfo.motorBRotate);
 			}
 			
 			actualDirection = newDirection;
@@ -205,25 +162,50 @@ public class Main {
 		
 	}
 	
+	private static class DoPath implements Behavior {
+
+		@Override
+		public boolean takeControl() {
+			return mapped && pathToGreen.size() > 0;
+		}
+
+		@Override
+		public void action() {
+			
+		}
+
+		@Override
+		public void suppress() {
+			
+		}
+		
+	}
+	
 	public static void printMapState() {
 		LCD.clear();
-		LCD.drawString(formatMapLine(matriz[0]), 0, 0);
-		LCD.drawString(formatMapLine(matriz[1]), 0, 1);
-		LCD.drawString(formatMapLine(matriz[2]), 0, 2);
-		LCD.drawString(formatMapLine(matriz[3]), 0, 3);
+		LCD.drawString(formatMapLine(matriz[0], 0), 0, 1);
+		LCD.drawString(formatMapLine(matriz[1], 1), 0, 2);
+		LCD.drawString(formatMapLine(matriz[2], 2), 0, 3);
+		LCD.drawString(formatMapLine(matriz[3], 3), 0, 4);
 	}
 	
-	private static String formatMapLine(Posicao[] line) {
-		return getFreePathCount(line[0]) + "|" + getFreePathCount(line[1]) + "|" + getFreePathCount(line[2]) + "|" + getFreePathCount(line[3]);
+	private static String formatMapLine(Posicao[] line, int y) {
+		return getFreePathCount(line[0], 0, y) + "|" + getFreePathCount(line[1], 1, y) + "|" + getFreePathCount(line[2], 2, y) + "|" + getFreePathCount(line[3], 3, y);
 	}
 	
-	private static String getFreePathCount(Posicao pos) {
+	private static String getFreePathCount(Posicao pos, int x, int y) {
 		if (pos == null) {
 			return "-";
 		}
-		if (pos.equals(Main.pos)) {
+		if (Main.pos.x == x && Main.pos.y == y) {
 			return "X";
 		}
+		
+		if (greenPos != null && x == greenPos.x && y == greenPos.y) {
+			return "D";
+		}
+		
+		
 		int count = 0;
 		for (int i = 0; i < pos.freePaths.length; i++) {
 			if (pos.freePaths[i]) {
@@ -236,14 +218,12 @@ public class Main {
 	public static void main(String[] args) throws InterruptedException {
 		Thread.sleep(2000);
 		UltrasonicSensor ultrasonicSensor = new UltrasonicSensor(SensorPort.S3);
-		ColorSensor colorSensor = new ColorSensor(SensorPort.S2);
-		TouchSensor touchSensor = new TouchSensor(SensorPort.S1);
+		ColorSensor colorSensor = new ColorSensor(SensorPort.S1);
+		TouchSensor touchSensor = new TouchSensor(SensorPort.S4);
 		Behavior[] behaviorList = { //
-									new AndarRastrearBloco(ultrasonicSensor), // 
+									new AndarRastrearBloco(ultrasonicSensor, colorSensor, touchSensor), //
+									new DoPath(),
 									new Girar(), //
-									new StepBack(), // 
-									new ProcurarPosFinal(colorSensor), // 
-									new PararRobo(touchSensor) //
 								  };
 		
 		Arbitrator arbitrator = new Arbitrator(behaviorList);

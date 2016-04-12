@@ -12,7 +12,7 @@ public abstract class Direcao {
 		this.sensor = sensor;
 	}
 	
-	public abstract ArrayList<Direcao> checkBounds(Main.Posicao pos, Point actualPos);
+	public abstract ArrayList<Direcao> checkBounds(Posicao pos, Point actualPos);
 	
 	public abstract GirarRoboInfo getTurnInfo(Direcao olderDirection);
 	
@@ -27,13 +27,13 @@ public abstract class Direcao {
 	
 	protected Direcao createDirection(int direction) {
 		switch (direction) {
-			case Main.Posicao.CIMA:
+			case Posicao.CIMA:
 				return new Cima(sensor);
-			case Main.Posicao.BAIXO:
+			case Posicao.BAIXO:
 				return new Baixo(sensor);
-			case Main.Posicao.DIREITA:
+			case Posicao.DIREITA:
 				return new Direita(sensor);
-			case Main.Posicao.ESQUERDA:
+			case Posicao.ESQUERDA:
 				return new Esquerda(sensor);
 		}
 		return null;
@@ -48,16 +48,16 @@ class Baixo extends Direcao {
 	}
 
 	@Override
-	public ArrayList<Direcao> checkBounds(Main.Posicao pos, Point actualPos) {
-		pos.freePaths[Main.Posicao.CIMA] = actualPos.y > 0;
-		pos.freePaths[Main.Posicao.BAIXO] = isPathFree(0) && actualPos.y < 3;
-		pos.freePaths[Main.Posicao.DIREITA] = isPathFree(90) && actualPos.x < 3;
-		pos.freePaths[Main.Posicao.ESQUERDA] = isPathFree(-180) && actualPos.x > 0;
+	public ArrayList<Direcao> checkBounds(Posicao pos, Point actualPos) {
+		pos.freePaths[Posicao.CIMA] = actualPos.y > 0;
+		pos.freePaths[Posicao.BAIXO] = isPathFree(0) && actualPos.y < 3;
+		pos.freePaths[Posicao.DIREITA] = isPathFree(90) && actualPos.x < 3;
+		pos.freePaths[Posicao.ESQUERDA] = isPathFree(-180) && actualPos.x > 0;
 		isPathFree(90);
 		
 		ArrayList<Direcao> directions = new ArrayList<>();
 		for (int i = 0; i < 4; i++) {
-			if (i == Main.Posicao.CIMA) {
+			if (i == Posicao.CIMA) {
 				continue;
 			}
 			
@@ -104,16 +104,16 @@ class Cima extends Direcao {
 	}
 
 	@Override
-	public ArrayList<Direcao> checkBounds(Main.Posicao pos, Point actualPos) {
-		pos.freePaths[Main.Posicao.BAIXO] = actualPos.y < 3;
-		pos.freePaths[Main.Posicao.CIMA] = isPathFree(0) && actualPos.y > 0;
-		pos.freePaths[Main.Posicao.ESQUERDA] = isPathFree(90) && actualPos.x > 0;
-		pos.freePaths[Main.Posicao.DIREITA] = isPathFree(-180) && actualPos.x < 3;
+	public ArrayList<Direcao> checkBounds(Posicao pos, Point actualPos) {
+		pos.freePaths[Posicao.BAIXO] = actualPos.y < 3;
+		pos.freePaths[Posicao.CIMA] = isPathFree(0) && actualPos.y > 0;
+		pos.freePaths[Posicao.ESQUERDA] = isPathFree(90) && actualPos.x > 0;
+		pos.freePaths[Posicao.DIREITA] = isPathFree(-180) && actualPos.x < 3;
 		
 		isPathFree(90);
 		ArrayList<Direcao> directions = new ArrayList<>();
 		for (int i = 0; i < 4; i++) {
-			if (i == Main.Posicao.BAIXO) {
+			if (i == Posicao.BAIXO) {
 				continue;
 			}
 			
@@ -160,16 +160,16 @@ class Direita extends Direcao {
 	}
 
 	@Override
-	public ArrayList<Direcao> checkBounds(Main.Posicao pos, Point actualPos) {
-		pos.freePaths[Main.Posicao.ESQUERDA] = true;
-		pos.freePaths[Main.Posicao.DIREITA] = isPathFree(0) && actualPos.x < 3;
-		pos.freePaths[Main.Posicao.CIMA] = isPathFree(90) && actualPos.y > 0;
-		pos.freePaths[Main.Posicao.BAIXO] = isPathFree(-180) && actualPos.y < 3;
+	public ArrayList<Direcao> checkBounds(Posicao pos, Point actualPos) {
+		pos.freePaths[Posicao.ESQUERDA] = true;
+		pos.freePaths[Posicao.DIREITA] = isPathFree(0) && actualPos.x < 3;
+		pos.freePaths[Posicao.CIMA] = isPathFree(90) && actualPos.y > 0;
+		pos.freePaths[Posicao.BAIXO] = isPathFree(-180) && actualPos.y < 3;
 		
 		isPathFree(90);
 		ArrayList<Direcao> directions = new ArrayList<>();
 		for (int i = 0; i < 4; i++) {
-			if (i == Main.Posicao.ESQUERDA) {
+			if (i == Posicao.ESQUERDA) {
 				continue;
 			}
 			
@@ -216,16 +216,16 @@ class Esquerda extends Direcao {
 	}
 
 	@Override
-	public ArrayList<Direcao> checkBounds(Main.Posicao pos, Point actualPos) {
-		pos.freePaths[Main.Posicao.DIREITA] = true;
-		pos.freePaths[Main.Posicao.ESQUERDA] = isPathFree(0) && actualPos.x > 0;
-		pos.freePaths[Main.Posicao.BAIXO] = isPathFree(90) && actualPos.y < 3;
-		pos.freePaths[Main.Posicao.CIMA] = isPathFree(-180) && actualPos.y > 0;
+	public ArrayList<Direcao> checkBounds(Posicao pos, Point actualPos) {
+		pos.freePaths[Posicao.DIREITA] = true;
+		pos.freePaths[Posicao.ESQUERDA] = isPathFree(0) && actualPos.x > 0;
+		pos.freePaths[Posicao.BAIXO] = isPathFree(90) && actualPos.y < 3;
+		pos.freePaths[Posicao.CIMA] = isPathFree(-180) && actualPos.y > 0;
 		
 		isPathFree(90);
 		ArrayList<Direcao> directions = new ArrayList<>();
 		for (int i = 0; i < 4; i++) {
-			if (i == Main.Posicao.DIREITA) {
+			if (i == Posicao.DIREITA) {
 				continue;
 			}
 			
