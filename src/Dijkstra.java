@@ -16,7 +16,7 @@ public class Dijkstra {
   
            // The shortest path to next is dist[next] and via pred[next].
   
-           final int [] n = graph.neighbors (next);
+           final Integer [] n = graph.neighbors(next);
            for (int j=0; j<n.length; j++) {
               final int v = n[j];
               final int d = dist[next] + graph.getWeight(next,v);

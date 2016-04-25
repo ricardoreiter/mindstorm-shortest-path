@@ -67,7 +67,8 @@ public class Main {
 			printMapState();
 			
 			if (!hasNodesToSearch()) {
-				LCD.drawString("Achou final!", 0, 0);
+				LCD.drawString("Achou final! Pressione o botão", 0, 0);
+				pathToGreen = getPathToGreen();
 				while (!touchSensor.isPressed()) {
 					
 				}
@@ -110,6 +111,37 @@ public class Main {
 			}
 		}
 		
+		/**
+		 * Retorna uma lista de direções para chegar até o destino final (Marca verde)
+		 * Transforma a matriz em um grafo, aplica o dijkstra, e mapeia as direções de acordo com o resultado do dijkstra
+		 * @return lista de direções para chegar a marca verde
+		 */
+		private ArrayList<Direcao> getPathToGreen() {
+			Graph graph = new Graph(matriz);
+			int[] paths = Dijkstra.dijkstra(graph, 0);
+			int greenPosArray = (int) ((greenPos.y * 4) + greenPos.x);
+			
+			ArrayList<Direcao> directions = new ArrayList<>();
+			
+			int currentPos = greenPosArray;
+			while (currentPos != 0) {
+				int newPos = paths[currentPos];
+				int dif = currentPos - newPos;
+				if (dif == 4) {
+					directions.add(new Baixo(ultrasonicSensor));
+				} else if (dif == -4) {
+					directions.add(new Cima(ultrasonicSensor));
+				} else if (dif == 1) {
+					directions.add(new Direita(ultrasonicSensor));
+				} else if (dif == -1) {
+					directions.add(new Esquerda(ultrasonicSensor));
+				}
+				currentPos = newPos;
+			}
+			
+			return directions;
+		}
+
 		@Override
 		public void suppress() {
 		}
