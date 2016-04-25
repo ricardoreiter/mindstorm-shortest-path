@@ -14,6 +14,7 @@ public class Main {
 
 	public static final int MAX_DISTANCE_TO_WALL = 25;
 	public static final int TURN_ROTATE_VALUE = 285;
+	private static final int FORWARD_ROTATE = 820;
 	
 	private static Point pos = new Point(0, 0);
 	
@@ -32,7 +33,7 @@ public class Main {
 	private static ArrayList<Direcao> pathToGreen = new ArrayList<>();
 	
 	private static class AndarRastrearBloco implements Behavior {
-
+		
 		UltrasonicSensor ultrasonicSensor;
 		ColorSensor colorSensor;
 		TouchSensor touchSensor;
@@ -54,8 +55,8 @@ public class Main {
 			Motor.B.setSpeed(400);
 			Motor.C.setSpeed(400);
 			if (actualDirection != null) {
-				Motor.B.rotate(820, true);
-				Motor.C.rotate(820);
+				Motor.B.rotate(FORWARD_ROTATE, true);
+				Motor.C.rotate(FORWARD_ROTATE);
 				
 				pos = actualDirection.getUpdatedPoint(pos);
 			} else {
@@ -73,6 +74,8 @@ public class Main {
 					
 				}
 				LCD.drawString("Faça o caminho willie!", 0, 0);
+				actualDirection = null;
+				newDirection = null;
 				mapped = true;
 				return;
 			}
@@ -203,7 +206,13 @@ public class Main {
 
 		@Override
 		public void action() {
-			
+			Motor.B.setSpeed(400);
+			Motor.C.setSpeed(400);
+			if (actualDirection != null) {
+				Motor.B.rotate(FORWARD_ROTATE, true);
+				Motor.C.rotate(FORWARD_ROTATE);
+			}
+			newDirection = pathToGreen.remove(pathToGreen.size()-1);
 		}
 
 		@Override
