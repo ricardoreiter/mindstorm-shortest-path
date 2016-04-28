@@ -14,7 +14,7 @@ public class Main {
 
 	public static final int MAX_DISTANCE_TO_WALL = 25;
 	public static final int TURN_ROTATE_VALUE = 285;
-	private static final int FORWARD_ROTATE = 820;
+	private static final int FORWARD_ROTATE = 860;
 	
 	private static Point pos = new Point(0, 0);
 	
@@ -201,7 +201,7 @@ public class Main {
 
 		@Override
 		public boolean takeControl() {
-			return mapped && pathToGreen.size() > 0;
+			return mapped;
 		}
 
 		@Override
@@ -212,7 +212,12 @@ public class Main {
 				Motor.B.rotate(FORWARD_ROTATE, true);
 				Motor.C.rotate(FORWARD_ROTATE);
 			}
-			newDirection = pathToGreen.remove(pathToGreen.size()-1);
+			if (pathToGreen.size() > 0) {
+				newDirection = pathToGreen.remove(pathToGreen.size()-1);
+			} else {
+				mapped = false;
+				System.exit(0);
+			}
 		}
 
 		@Override
